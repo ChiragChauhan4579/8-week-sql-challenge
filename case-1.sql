@@ -80,3 +80,40 @@ SELECT * FROM rank_table
 WHERE rank_order = 1
 GROUP BY customer_id,product_name,rank_order
 ORDER BY customer_id;
+
+--What is the most purchased item on the menu and how many times was it purchased by all customers?
+
+SELECT MENU.PRODUCT_NAME,COUNT(MENU.PRODUCT_ID) AS TIMES_PURCHASED FROM SALES
+JOIN MENU ON SALES.PRODUCT_ID=MENU.PRODUCT_ID
+GROUP BY MENU.PRODUCT_NAME
+ORDER BY TIMES_PURCHASED DESC LIMIT 1;
+
+--Which item was the most popular for each customer?
+
+With rank as
+(
+Select SALES.customer_ID ,
+       MENU.product_name, 
+       Count(SALES.product_id) as Count,
+       Dense_rank()  Over (Partition by SALES.Customer_ID order by Count(SALES.product_id) DESC ) as Rank
+From MENU 
+join SALES
+On MENU.product_id = SALES.product_id
+group by SALES.customer_id,SALES.product_id,MENU.product_name
+)
+
+Select Customer_id,Product_name,Count
+From rank
+where rank = 1
+
+--Which item was purchased first by the customer after they became a member?
+
+SELECT SALES.CUSTOMER_ID,MENU.PRODUCT_NAME,SALES.ORDER_DATE,MEMBERS.JOIN_DATE,Dense_rank() OVER (Partition by SALES.CUSTOMER_ID Order by SALES.ORDER_DATE) as Rank INTO MEMBERSHIP FROM SALES
+JOIN MENU ON SALES.PRODUCT_ID=MENU.PRODUCT_ID
+JOIN MEMBERS ON SALES.CUSTOMER_ID=MEMBERS.CUSTOMER_ID
+WHERE SALES.ORDER_DATE >= MEMBERS.JOIN_DATE
+GROUP BY SALES.CUSTOMER_ID,SALES.ORDER_DATE,MEMBERS.JOIN_DATE,MENU.PRODUCT_NAME
+ORDER BY SALES.ORDER_DATE;
+
+SELECT CUSTOMER_ID,PRODUCT_NAME FROM MEMBERSHIP
+WHERE RANK = 1;
