@@ -49,6 +49,20 @@ VALUES
   ('A', '2021-01-07'),
   ('B', '2021-01-09');
   
+-- Stored procedure 
+
+CREATE OR REPLACE PROCEDURE sales_fun()
+LANGUAGE plpgsql AS  
+$$  
+BEGIN
+
+END  
+$$;  
+
+CALL sales_fun()
+
+---------------------------------------------------------------------------------------------------------------------------------
+  
 
 --What is the total amount each customer spent at the restaurant?
 
@@ -117,3 +131,71 @@ ORDER BY SALES.ORDER_DATE;
 
 SELECT CUSTOMER_ID,PRODUCT_NAME FROM MEMBERSHIP
 WHERE RANK = 1;
+
+DROP TABLE MEMBERSHIP
+
+--Which item was purchased just before the customer became a member?
+
+SELECT SALES.CUSTOMER_ID,MENU.PRODUCT_NAME,SALES.ORDER_DATE,MEMBERS.JOIN_DATE,Dense_rank() OVER (Partition by SALES.CUSTOMER_ID Order by SALES.ORDER_DATE) as Rank INTO MEMBERSHIP FROM SALES
+JOIN MENU ON SALES.PRODUCT_ID=MENU.PRODUCT_ID
+JOIN MEMBERS ON SALES.CUSTOMER_ID=MEMBERS.CUSTOMER_ID
+WHERE SALES.ORDER_DATE < MEMBERS.JOIN_DATE
+GROUP BY SALES.CUSTOMER_ID,SALES.ORDER_DATE,MEMBERS.JOIN_DATE,MENU.PRODUCT_NAME
+ORDER BY SALES.ORDER_DATE;
+
+SELECT * FROM MEMBERSHIP
+WHERE RANK = 1;
+
+--What is the total items and amount spent for each member before they became a member?
+
+SELECT SALES.CUSTOMER_ID,COUNT(SALES.PRODUCT_ID ) AS QUANTITY ,SUM(MENU.PRICE) as total_sales
+From SALES
+Join MENU
+ON MENU.PRODUCT_ID = SALES.PRODUCT_ID
+JOIN MEMBERS
+ON MEMBERS.CUSTOMER_ID = SALES.CUSTOMER_ID
+Where SALES.ORDER_DATE < MEMBERS.JOIN_DATE
+Group by SALES.CUSTOMER_ID;
+
+--If each $1 spent equates to 10 points and sushi has a 2x points multiplier - how many points would each customer have?
+
+
+SELECT *, CASE WHEN PRODUCT_ID = 1 THEN PRICE*20
+               ELSE PRICE*10
+	       END AS Points
+INTO POINTS
+FROM MENU
+
+SELECT SALES.CUSTOMER_ID, SUM(POINTS.POINTS) AS Points
+FROM SALES
+JOIN POINTS 
+ON POINTS.PRODUCT_ID = SALES.PRODUCT_ID
+GROUP BY SALES.CUSTOMER_ID
+ORDER BY Points DESC;
+
+SELECT * FROM POINTS
+
+--In the first week after a customer joins the program (including their join date) they earn 2x points on all items, not just sushi - how many points do customer A and B have at the end of January?
+
+WITH dates AS 
+(
+   SELECT *, 
+      DATEADD(DAY, 6, join_date) AS valid_date, 
+      EOMONTH('2021-01-31') AS last_date
+   FROM members 
+)
+Select S.Customer_id, 
+       SUM(
+	   Case 
+	  When m.product_ID = 1 THEN m.price*20
+	  When S.order_date between D.join_date and D.valid_date Then m.price*20
+	  Else m.price*10
+	  END 
+	  ) as Points
+From Dates D
+join Sales S
+On D.customer_id = S.customer_id
+Join Menu M
+On M.product_id = S.product_id
+Where S.order_date < d.last_date
+Group by S.customer_id
