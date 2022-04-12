@@ -146,8 +146,26 @@ WHERE DURATION <> 'null'
 GROUP BY PIZZA_NAMES.PIZZA_ID,PIZZA_NAMES.PIZZA_NAME;
 
 --How many Vegetarian and Meatlovers were ordered by each customer?
+
+SELECT CUSTOMER_ORDERS.CUSTOMER_ID,PIZZA_NAMES.PIZZA_NAME,COUNT(PIZZA_NAMES.PIZZA_ID) AS PIZZAS_ORDERED FROM CUSTOMER_ORDERS 
+JOIN  PIZZA_NAMES
+ON CUSTOMER_ORDERS.PIZZA_ID = PIZZA_NAMES.PIZZA_ID
+JOIN RUNNER_ORDERS
+ON CUSTOMER_ORDERS.ORDER_ID = RUNNER_ORDERS.ORDER_ID
+WHERE DURATION <> 'null'
+GROUP BY CUSTOMER_ORDERS.CUSTOMER_ID,PIZZA_NAMES.PIZZA_NAME
+ORDER BY PIZZAS_ORDERED DESC;
+
 --What was the maximum number of pizzas delivered in a single order?
+
+SELECT ORDER_ID,COUNT(ORDER_ID) AS MAX_PIZZAS FROM CUSTOMER_ORDERS
+GROUP BY ORDER_ID
+ORDER BY MAX_PIZZAS DESC LIMIT 1;
+
 --For each customer, how many delivered pizzas had at least 1 change and how many had no changes?
+SELECT * FROM CUSTOMER_ORDERS
+
+
 --How many pizzas were delivered that had both exclusions and extras?
 --What was the total volume of pizzas ordered for each hour of the day?
 --What was the volume of orders for each day of the week?
