@@ -122,8 +122,8 @@ SELECT COUNT(PIZZA_ID) AS PIZZAS_ORDERED FROM CUSTOMER_ORDERS;
   
 --How many unique customer orders were made?
 
-SELECT ORDER_ID,CUSTOMER_ID,PIZZA_ID,EXTRAS FROM CUSTOMER_ORDERS
-WHERE EXTRAS <> 'null' AND EXTRAS <> '';
+SELECT COUNT(DISTINCT order_id) AS order_count
+FROM CUSTOMER_ORDERS;
  
 --How many successful orders were delivered by each runner?
 
@@ -158,14 +158,68 @@ ORDER BY PIZZAS_ORDERED DESC;
 
 --What was the maximum number of pizzas delivered in a single order?
 
+SELECT * FROM CUSTOMER_ORDERS
 SELECT ORDER_ID,COUNT(ORDER_ID) AS MAX_PIZZAS FROM CUSTOMER_ORDERS
 GROUP BY ORDER_ID
 ORDER BY MAX_PIZZAS DESC LIMIT 1;
 
 --For each customer, how many delivered pizzas had at least 1 change and how many had no changes?
-SELECT * FROM CUSTOMER_ORDERS
 
+SELECT CUSTOMER_ID,COUNT(ORDER_ID) AS MIN_ONE_CHANGE FROM CUSTOMER_ORDERS
+WHERE (EXCLUSIONS <> 'null' AND EXCLUSIONS <> '') OR (EXTRAS <> 'null' AND EXTRAS <> '')
+GROUP BY CUSTOMER_ID;
+
+SELECT CUSTOMER_ID,COUNT(ORDER_ID) as NO_CHANGES FROM CUSTOMER_ORDERS
+WHERE (EXCLUSIONS = 'null' OR EXCLUSIONS = '') AND (EXTRAS = 'null' OR EXTRAS = '')
+GROUP BY CUSTOMER_ID;
 
 --How many pizzas were delivered that had both exclusions and extras?
+
+SELECT COUNT(ORDER_ID) as BOTH_EXC_AND_EXT FROM CUSTOMER_ORDERS
+WHERE (EXCLUSIONS <> 'null' AND EXCLUSIONS <> '') AND (EXTRAS <> 'null' AND EXTRAS <> '')
+
 --What was the total volume of pizzas ordered for each hour of the day?
+
+SELECT DATE_PART('hour', order_time::TIMESTAMP) AS hour_of_day, COUNT(*) AS pizza_count
+FROM CUSTOMER_ORDERS
+WHERE order_time IS NOT NULL
+GROUP BY hour_of_day
+ORDER BY hour_of_day;
+
+
 --What was the volume of orders for each day of the week?
+
+SELECT
+  TO_CHAR(order_time, 'Day') AS day_of_week,
+  COUNT(*) AS pizza_count
+FROM CUSTOMER_ORDERS
+GROUP BY 
+  day_of_week, 
+  DATE_PART('dow', order_time)
+ORDER BY day_of_week;
+
+-----------------------------------------------B---------------------------------------------------------------------------------
+
+--How many runners signed up for each 1 week period? (i.e. week starts 2021-01-01)
+
+SELECT DISTINCT(COUNT(runner_id)) FROM RUNNERS
+
+--What was the average time in minutes it took for each runner to arrive at the Pizza Runner HQ to pickup the order?
+
+SELECT RUNNER_ORDERS.order_id,RUNNER_ORDERS.runner_id, split_part(RUNNER_ORDERS.pickup_time,' ', 2) AS ARRIVAL INTO ARRIVAL_TABLE
+FROM RUNNER_ORDERS
+
+SELECT * FROM ARRIVAL_TABLE
+
+ALTER TABLE CUSTOMER_ORDERS 
+ALTER COLUMN order_time 
+TYPE text;
+
+SELECT CUSTOMER_ORDERS.order_id,split_part(CUSTOMER_ORDERS.order_time,' ', 2) AS ORDER_TIME INTO ORDER_TABLE
+FROM CUSTOMER_ORDERS
+
+SELECT * FROM ORDER_TABLE
+
+SELECT runner_id,Extract(day FROM (ARRIVAL_TABLE.ARRIVAL - ORDER_TABLE.ORDER_TIME))*24*60 AS minutes FROM ARRIVAL_TABLE
+INNER JOIN ORDER_TABLE
+ON ARRIVAL_TABLE.ORDER_ID = ORDER_TABLE.ORDER_ID;
