@@ -217,3 +217,21 @@ WHERE RUNNER_ORDERS.pickup_time <> 'null';
 
 SELECT runner_id,avg(minutes) FROM average_time
 GROUP BY runner_id;
+
+--Is there any relationship between the number of pizzas and how long the order takes to prepare?
+
+SELECT RUNNER_ORDERS.order_id,COUNT(CUSTOMER_ORDERS.PIZZA_ID),Extract(minute FROM (RUNNER_ORDERS.pickup_time::timestamp - CUSTOMER_ORDERS.order_time)) AS minutes INTO prepare_time FROM RUNNER_ORDERS
+INNER JOIN CUSTOMER_ORDERS
+ON RUNNER_ORDERS.ORDER_ID = CUSTOMER_ORDERS.ORDER_ID
+WHERE RUNNER_ORDERS.pickup_time <> 'null'
+GROUP BY RUNNER_ORDERS.order_id,RUNNER_ORDERS.pickup_time,CUSTOMER_ORDERS.order_time;
+
+SELECT * FROM prepare_time;
+
+--What was the average distance travelled for each customer?
+
+SELECT customer_id,avg(rtrim(runner_orders.distance,'km')::float) as avg_dist FROM CUSTOMER_ORDERS
+JOIN RUNNER_ORDERS ON CUSTOMER_ORDERS.ORDER_ID = RUNNER_ORDERS.ORDER_ID
+WHERE distance <> 'null'
+GROUP BY customer_id
+ORDER BY avg_dist desc;
