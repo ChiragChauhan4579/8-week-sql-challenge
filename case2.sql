@@ -57,11 +57,11 @@ CREATE TABLE runner_orders (
 INSERT INTO runner_orders
   ("order_id", "runner_id", "pickup_time", "distance", "duration", "cancellation")
 VALUES
-  ('1', '1', '2020-01-01 18:15:34', '20km', '32 minutes', ''),
-  ('2', '1', '2020-01-01 19:10:54', '20km', '27 minutes', ''),
-  ('3', '1', '2020-01-03 00:12:37', '13.4km', '20 mins', NULL),
-  ('4', '2', '2020-01-04 13:53:03', '23.4', '40', NULL),
-  ('5', '3', '2020-01-08 21:10:57', '10', '15', NULL),
+  ('1', '1', '2020-01-01 18:15:34', '20km', '32 minutes', 'null'),
+  ('2', '1', '2020-01-01 19:10:54', '20km', '27 minutes', 'null'),
+  ('3', '1', '2020-01-03 00:12:37', '13.4km', '20 mins', 'null'),
+  ('4', '2', '2020-01-04 13:53:03', '23.4', '40', 'null'),
+  ('5', '3', '2020-01-08 21:10:57', '10', '15', 'null'),
   ('6', '3', 'null', 'null', 'null', 'Restaurant Cancellation'),
   ('7', '2', '2020-01-08 21:30:45', '25km', '25mins', 'null'),
   ('8', '2', '2020-01-10 00:15:02', '23.4 km', '15 minute', 'null'),
@@ -235,3 +235,52 @@ JOIN RUNNER_ORDERS ON CUSTOMER_ORDERS.ORDER_ID = RUNNER_ORDERS.ORDER_ID
 WHERE distance <> 'null'
 GROUP BY customer_id
 ORDER BY avg_dist desc;
+
+-- What was the difference between the longest and shortest delivery times for all orders?
+
+SELECT (MAX(rtrim(runner_orders.duration,'minutes'))::INT-MIN(rtrim(runner_orders.duration,'minutes'))::INT) AS difference
+FROM runner_orders
+
+-- What was the average speed for each runner for each delivery and do you notice any trend for these values?
+
+UPDATE runner_orders
+SET duration = 0
+WHERE duration = 'null' ;
+
+SELECT runner_id,avg((rtrim(runner_orders.duration,'minutes'))::int) FROM runner_orders
+WHERE duration IS NOT NULL
+GROUP BY runner_orders.runner_id;
+
+-- What is the successful delivery percentage for each runner?
+
+UPDATE runner_orders
+SET cancellation = 0
+WHERE cancellation = 'Restaurant Cancellation' or cancellation = 'Customer Cancellation' ;
+
+UPDATE runner_orders
+SET cancellation = 1
+WHERE cancellation <> '0';
+
+SELECT * FROM runner_orders
+
+SELECT runner_id,count(cancellation) as right_delivery into right_delivery FROM runner_orders
+WHERE cancellation::int <> 0
+GROUP BY runner_id;
+
+SELECT runner_id,count(cancellation) as cancelled into cancellation FROM runner_orders
+WHERE cancellation::int <> 1
+GROUP BY runner_id;
+
+SELECT right_delivery.runner_id,right_delivery,cancellation.cancelled INTO average_table FROM right_delivery
+FULL JOIN cancellation ON right_delivery.runner_id = cancellation.runner_id;
+
+UPDATE average_table
+SET cancelled = 0
+WHERE cancelled IS NULL;
+
+select * from average_table
+
+SELECT runner_id, (right_delivery::float/(right_delivery::float+cancelled::float))*100 AS success_percent
+FROM average_table
+GROUP BY runner_id,right_delivery,cancelled
+ORDER BY success_percent DESC;
